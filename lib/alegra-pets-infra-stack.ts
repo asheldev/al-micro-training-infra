@@ -1,16 +1,21 @@
 import * as cdk from 'aws-cdk-lib';
 import { Construct } from 'constructs';
-// import * as sqs from 'aws-cdk-lib/aws-sqs';
+import * as route53 from 'aws-cdk-lib/aws-route53';
+import * as acm from 'aws-cdk-lib/aws-certificatemanager';
 
 export class AlegraPetsInfraStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
     super(scope, id, props);
 
-    // The code that defines your stack goes here
+    const alegraHostedZone = new route53.HostedZone(this, 'AlegraTrainingZone', {
+  		zoneName: 'alegra.com',
+		});
 
-    // example resource
-    // const queue = new sqs.Queue(this, 'AlegraPetsInfraQueue', {
-    //   visibilityTimeout: cdk.Duration.seconds(300)
-    // });
-  }
+		// alegra.com certificate
+		new acm.Certificate(this, 'AlegraPetsTrainingCertificate', {
+			domainName: '*.alegra.com',
+			certificateName: 'Alegra Pets Training',
+			validation: acm.CertificateValidation.fromDns(alegraHostedZone),
+		});
+	}
 }
