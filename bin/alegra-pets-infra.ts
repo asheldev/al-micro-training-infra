@@ -1,15 +1,27 @@
 #!/usr/bin/env node
-import 'source-map-support/register';
 import * as cdk from 'aws-cdk-lib';
+import * as dotenv from 'dotenv';
 import { AlegraPetsInfraStack } from '../lib/alegra-pets-infra-stack';
 
-const name = 'alegra-pets-training'
+dotenv.config();
 
 const app = new cdk.App();
+
+const appName = process.env.PROJECT_PREFIX || 'alegra-pets-training';
+
+const environment = app.node.tryGetContext('env');
+
+if (['dev', 'prod'].indexOf(environment) === -1) {
+	throw Error(`Environment [${environment}] not supported`);
+}
+
+const sharedProps = {
+	env: environment,
+	account: process.env.AWS_ACCOUNT_ID || '',
+	region: process.env.AWS_ACCOUNT_REGION || '',
+}
+
 new AlegraPetsInfraStack(app, 'AlegraPetsInfraStack', {
-  env: {
-		account: process.env.AWS_ACCOUNT_ID,
-		region: process.env.AWS_ACCOUNT_REGION
-	},
-	stackName: name
+	...sharedProps,
+	name: `${appName}-root-${environment}`,
 });
