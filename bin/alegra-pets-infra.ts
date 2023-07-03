@@ -2,6 +2,7 @@
 import * as cdk from 'aws-cdk-lib';
 import * as dotenv from 'dotenv';
 import { AlegraPetsInfraStack } from '../lib/alegra-pets-infra-stack';
+import { FundationsStack } from '../lib/fundations-stack';
 
 dotenv.config();
 
@@ -24,4 +25,9 @@ const sharedProps = {
 new AlegraPetsInfraStack(app, 'AlegraPetsInfraStack', {
 	...sharedProps,
 	name: `${appName}-root-${environment}`,
+});
+
+new FundationsStack(app, 'FundationsStack', {
+	...sharedProps,
+	name: `${appName}-fundations-${environment}`,
 });
