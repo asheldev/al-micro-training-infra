@@ -7,13 +7,15 @@ import * as apiGw2 from 'aws-cdk-lib/aws-apigatewayv2';
 import { NodejsFunction } from 'aws-cdk-lib/aws-lambda-nodejs';
 import * as path from 'path';
 
-import { StackBasicProps } from '../interfaces';
+import { RootStackProps } from '../interfaces';
 import { getCdkPropsFromCustomProps, getResourceNameWithPrefix } from '../utils';
 
 export class AlegraPetsInfraStack extends cdk.Stack {
-  constructor(scope: Construct, id: string, props: StackBasicProps) {
+  constructor(scope: Construct, id: string, props: RootStackProps) {
     super(scope, id, getCdkPropsFromCustomProps(props));
 
+		const fundationsTable = props.fundationsStack.fundationsTable;
+		
     const alegraHostedZone = new route53.HostedZone(this, 'AlegraTrainingZone', {
   		zoneName: 'alegra.com',
 		});
@@ -36,6 +38,17 @@ export class AlegraPetsInfraStack extends cdk.Stack {
 			description: 'Uses a 3rd party libray called jsonwebtoken'
 		});
 
+		// ulid lambda layer
+		const ulidLayer = new lambda.LayerVersion(this, 'UlidLambdaLayer', {
+			code: lambda.Code.fromAsset('src/lambda/layers/ulid'),
+			compatibleRuntimes: [
+				lambda.Runtime.NODEJS_14_X,
+				lambda.Runtime.NODEJS_16_X,
+			],
+			layerVersionName: getResourceNameWithPrefix(`ulid-layer-${props.env}`),
+			description: 'Uses a 3rd party libray called ulid to generate sorteable identifiers'
+		});
+
 		// Authorizer lambda
 		const authorizerLambda = new NodejsFunction(this, 'AuthorizerLambda', {
 			runtime: lambda.Runtime.NODEJS_16_X,
@@ -43,14 +56,17 @@ export class AlegraPetsInfraStack extends cdk.Stack {
 			handler: 'handler',
 			bundling: {
 				minify: false,
-				externalModules: ['jsonwebtoken']
+				externalModules: ['jsonwebtoken', 'aws-sdk']
 			},
 			functionName: getResourceNameWithPrefix(`lambda-authorizer-${props.env}`),
 			layers: [jwtLayer],
 			environment: {
 				JWT_SECRET: process.env.JWT_SECRET || '',
+				FUNDATIONS_TABLE_NAME: fundationsTable.tableName,
 			}
 		});
+
+		fundationsTable.grantFullAccess(authorizerLambda);
 
 		// Creating the API
 		const httpApi = new apiGw2.CfnApi(this, 'AlegraPetsTrainingApi', {
@@ -96,6 +112,11 @@ export class AlegraPetsInfraStack extends cdk.Stack {
 			value: jwtLayer.layerVersionArn,
 		});
 
+		new cdk.CfnOutput(this, 'UlidLambdaLayerArn', {
+			exportName: getResourceNameWithPrefix(`ulid-layer-arn-${props.env}`),
+			value: ulidLayer.layerVersionArn,
+		});
+		
 		new cdk.CfnOutput(this, 'ApiIdOutput', {
 			exportName: getResourceNameWithPrefix(`api-id-${props.env}`),
 			value: httpApi.ref,

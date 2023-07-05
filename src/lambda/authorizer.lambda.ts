@@ -1,5 +1,8 @@
 import { APIGatewayAuthorizerResult, APIGatewayTokenAuthorizerEvent } from 'aws-lambda';
 import jwt from 'jsonwebtoken';
+import { DynamoDB } from 'aws-sdk';
+
+const dynamo = new DynamoDB.DocumentClient();
 
 const generatePolicy = (
 	principalId: string,
@@ -22,7 +25,7 @@ const generatePolicy = (
 export const handler = async (
 	event: APIGatewayTokenAuthorizerEvent
 ): Promise<APIGatewayAuthorizerResult> => {
-    // Extract the bearer authorization token from the event
+    // Extract the authorization token from the event
     const authorizationToken = event.headers.authorization;
 
 		let decodedToken;
@@ -30,15 +33,25 @@ export const handler = async (
 		try {
         decodedToken = jwt.verify(authorizationToken, process.env.JWT_SECRET);
 
-				if (decodedToken.sub !== 'fundation1') {
-					return generatePolicy(decodedToken.sub, 'Deny', event.routeArn);
+				const params = {
+					TableName: process.env.FUNDATIONS_TABLE_NAME,
+					KeyConditionExpression: 'fundationId = :fundationId',
+					ExpressionAttributeValues: {
+						":fundationId": decodedToken.fundationId
+					}
+				}
+				
+				const fundation = await dynamo.query(params).promise();
+
+				if (!fundation) {
+					return generatePolicy(decodedToken.fundationId, 'Deny', event.routeArn);
 				}
     } catch (err) {
-        console.error('Error verifying token', err);
+        console.error('Error: ', err);
         // Return an authorization response indicating the request is not authorized
-        return generatePolicy('user', 'Deny', event.routeArn);
+        return generatePolicy(decodedToken.fundationId, 'Deny', event.routeArn);
     }
 
     // return an authorization response indicating the request is authorized
-    return generatePolicy(decodedToken.sub, 'Allow', event.routeArn);
+    return generatePolicy(decodedToken.fundationId, 'Allow', event.routeArn);
 }

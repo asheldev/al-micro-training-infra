@@ -23,12 +23,7 @@ const sharedProps = {
 	region: process.env.AWS_ACCOUNT_REGION || '',
 }
 
-new AlegraPetsInfraStack(app, 'AlegraPetsInfraStack', {
-	...sharedProps,
-	name: `${appName}-root-${environment}`,
-});
-
-new FundationsStack(app, 'FundationsStack', {
+const fundationsStack = new FundationsStack(app, 'FundationsStack', {
 	...sharedProps,
 	name: `${appName}-fundations-${environment}`,
 });
@@ -37,3 +32,10 @@ new PetsStack(app, 'PetsStack', {
 	...sharedProps,
 	name: `${appName}-pets-${environment}`,
 })
+
+new AlegraPetsInfraStack(app, 'AlegraPetsInfraStack', {
+	...sharedProps,
+	name: `${appName}-root-${environment}`,
+	fundationsStack: fundationsStack,
+});
+
