@@ -64,6 +64,23 @@ export class AlegraPetsInfraStack extends cdk.Stack {
 			},
 		});
 
+		const jwtAuthorizerUri = `arn:aws:apigateway:${props.region}:lambda:path/2015-03-31/functions/${authorizerLambda.functionArn}/invocations`
+		
+		// Creating the authorizer for the API
+		const jwtAuthorizer = new apiGw2.CfnAuthorizer(
+			this,
+			'AlegraPetsTrainingApiAuthorizer',
+			{
+				apiId: httpApi.ref,
+				name: getResourceNameWithPrefix(`jwt-authorizer-${props.env}`),
+				authorizerType: 'REQUEST',
+				authorizerUri: jwtAuthorizerUri,
+				identitySource: ['$request.header.Authorization'],
+				authorizerPayloadFormatVersion: '2.0',
+				authorizerResultTtlInSeconds: 300,
+			}
+		);
+
 		const defaultStage = new apiGw2.CfnStage(this, "ApiDefaultStage", {
       apiId: httpApi.ref,
       stageName: "$default",
@@ -74,14 +91,19 @@ export class AlegraPetsInfraStack extends cdk.Stack {
       },
     });
 
+		new cdk.CfnOutput(this, 'JwtLambdaLayerArn', {
+			exportName: getResourceNameWithPrefix(`jwt-layer-arn-${props.env}`),
+			value: jwtLayer.layerVersionArn,
+		});
+
 		new cdk.CfnOutput(this, 'ApiIdOutput', {
 			exportName: getResourceNameWithPrefix(`api-id-${props.env}`),
 			value: httpApi.ref,
 		});
 
-		new cdk.CfnOutput(this, 'AuthorizerArnOutput', {
-			exportName: getResourceNameWithPrefix(`lambda-authorizer-arn-${props.env}`),
-			value: authorizerLambda.functionArn,
-		});
+		new cdk.CfnOutput(this, 'JwtAuthorizerIdOutput', {
+			exportName: getResourceNameWithPrefix(`jwt-authorizer-id-${props.env}`),
+			value: jwtAuthorizer.ref,
+		})
 	}
 }

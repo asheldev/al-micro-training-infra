@@ -23,7 +23,7 @@ export const handler = async (
 	event: APIGatewayTokenAuthorizerEvent
 ): Promise<APIGatewayAuthorizerResult> => {
     // Extract the bearer authorization token from the event
-    const authorizationToken = event.authorizationToken;
+    const authorizationToken = event.headers.authorization;
 
 		let decodedToken;
     
@@ -31,14 +31,14 @@ export const handler = async (
         decodedToken = jwt.verify(authorizationToken, process.env.JWT_SECRET);
 
 				if (decodedToken.sub !== 'fundation1') {
-					return generatePolicy(decodedToken.sub, 'Deny', event.methodArn);
+					return generatePolicy(decodedToken.sub, 'Deny', event.routeArn);
 				}
     } catch (err) {
         console.error('Error verifying token', err);
         // Return an authorization response indicating the request is not authorized
-        return generatePolicy('user', 'Deny', event.methodArn);
+        return generatePolicy('user', 'Deny', event.routeArn);
     }
 
     // return an authorization response indicating the request is authorized
-    return generatePolicy(decodedToken.sub, 'Allow', event.methodArn);
+    return generatePolicy(decodedToken.sub, 'Allow', event.routeArn);
 }
