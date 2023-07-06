@@ -4,6 +4,7 @@ import * as route53 from 'aws-cdk-lib/aws-route53';
 import * as acm from 'aws-cdk-lib/aws-certificatemanager';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
 import * as apiGw2 from 'aws-cdk-lib/aws-apigatewayv2';
+import * as s3 from 'aws-cdk-lib/aws-s3';
 import { NodejsFunction } from 'aws-cdk-lib/aws-lambda-nodejs';
 import * as path from 'path';
 
@@ -21,7 +22,7 @@ export class AlegraPetsInfraStack extends cdk.Stack {
 		});
 
 		// alegra.com certificate
-		new acm.Certificate(this, 'AlegraPetsTrainingCertificate', {
+		const certificate = new acm.Certificate(this, 'AlegraPetsTrainingCertificate', {
 			domainName: '*.alegra.com',
 			certificateName: 'Alegra Pets Training',
 			validation: acm.CertificateValidation.fromDns(alegraHostedZone)
@@ -80,6 +81,25 @@ export class AlegraPetsInfraStack extends cdk.Stack {
 			},
 		});
 
+		const domainName = new apiGw2.CfnDomainName(this, 'AlegraPetsTrainingDomain', {
+			domainName: 'ashel-training-pets.alegra.com',
+			domainNameConfigurations: [
+				{
+					certificateArn: certificate.certificateArn,
+					endpointType: 'regional',
+					securityPolicy: 'TLS_1_2',
+				},
+			],
+		});
+
+		const apiMapping = new apiGw2.CfnApiMapping(this, 'AlegraPetsTrainingApiMapping', {
+			apiId: httpApi.ref,
+			domainName: domainName.domainName,
+			stage: '$default',
+		});
+
+		apiMapping.addDependency(domainName);
+
 		const jwtAuthorizerUri = `arn:aws:apigateway:${props.region}:lambda:path/2015-03-31/functions/${authorizerLambda.functionArn}/invocations`
 		
 		// Creating the authorizer for the API
@@ -107,6 +127,22 @@ export class AlegraPetsInfraStack extends cdk.Stack {
       },
     });
 
+		const s3BucketLogger = new s3.Bucket(this, 'LoggerBucket', {
+			bucketName: getResourceNameWithPrefix(`logger-bucket-${props.env}`),
+			encryption: s3.BucketEncryption.S3_MANAGED,
+			removalPolicy: cdk.RemovalPolicy.DESTROY,
+		});
+
+		new cdk.CfnOutput(this, 'S3LoggerBucketArn', {
+			exportName: getResourceNameWithPrefix(`s3-logger-arn-${props.env}`),
+			value: s3BucketLogger.bucketArn,
+		});
+
+		new cdk.CfnOutput(this, 'S3LoggerBucketName', {
+			exportName: getResourceNameWithPrefix(`s3-logger-name-${props.env}`),
+			value: s3BucketLogger.bucketName,
+		});
+
 		new cdk.CfnOutput(this, 'JwtLambdaLayerArn', {
 			exportName: getResourceNameWithPrefix(`jwt-layer-arn-${props.env}`),
 			value: jwtLayer.layerVersionArn,
@@ -116,10 +152,15 @@ export class AlegraPetsInfraStack extends cdk.Stack {
 			exportName: getResourceNameWithPrefix(`ulid-layer-arn-${props.env}`),
 			value: ulidLayer.layerVersionArn,
 		});
-		
+
 		new cdk.CfnOutput(this, 'ApiIdOutput', {
 			exportName: getResourceNameWithPrefix(`api-id-${props.env}`),
 			value: httpApi.ref,
+		});
+
+		new cdk.CfnOutput(this, 'ApiUrlOutput', {
+			exportName: getResourceNameWithPrefix(`api-url-${props.env}`),
+			value: httpApi.getAtt('ApiEndpoint').toString(),
 		});
 
 		new cdk.CfnOutput(this, 'JwtAuthorizerIdOutput', {
