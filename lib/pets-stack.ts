@@ -33,7 +33,7 @@ export class PetsStack extends cdk.Stack {
 		// Adding sns event
 		const petAdoptedEvent = new sns.Topic(this, 'PetAdoptedEvent', {
 			topicName: getResourceNameWithPrefix(`adoption-topic-${props.env}`),
-			displayName: 'Pet Adoption Topic',
+			displayName: 'pet-happy',
 		});
 
 		petAdoptedEvent.addSubscription(new subscriptions.EmailSubscription('vasquezpalominoashel@gmail.com'));
