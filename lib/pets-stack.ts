@@ -1,6 +1,8 @@
 import * as cdk from 'aws-cdk-lib';
 import { Construct } from 'constructs';
 import * as dynamo from 'aws-cdk-lib/aws-dynamodb';
+import * as sns from 'aws-cdk-lib/aws-sns';
+import * as subscriptions from 'aws-cdk-lib/aws-sns-subscriptions';
 import { getCdkPropsFromCustomProps, getResourceNameWithPrefix } from '../utils';
 import { StackBasicProps } from '../interfaces';
 
@@ -28,9 +30,23 @@ export class PetsStack extends cdk.Stack {
 			projectionType: dynamo.ProjectionType.ALL,
 		})
 
+		// Adding sns event
+		const petAdoptedEvent = new sns.Topic(this, 'PetAdoptedEvent', {
+			topicName: getResourceNameWithPrefix(`adoption-topic-${props.env}`),
+			displayName: 'pet-happy',
+		});
+
+		const leaderEmail = 'armando.rodriguez@alegra.com'
+		petAdoptedEvent.addSubscription(new subscriptions.EmailSubscription(leaderEmail));
+
 		new cdk.CfnOutput(this, 'PetsTableNameOutput', {
 			value: petsTable.tableName,
 			exportName: getResourceNameWithPrefix(`pets-table-name-${props.env}`),
+		})
+
+		new cdk.CfnOutput(this, 'PetAdoptedTopicArn', {
+			value: petAdoptedEvent.topicArn,
+			exportName: getResourceNameWithPrefix(`adoption-topic-arn-${props.env}`),
 		})
 	}	
 }
