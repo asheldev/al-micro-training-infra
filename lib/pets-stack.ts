@@ -36,7 +36,8 @@ export class PetsStack extends cdk.Stack {
 			displayName: 'pet-happy',
 		});
 
-		petAdoptedEvent.addSubscription(new subscriptions.EmailSubscription('vasquezpalominoashel@gmail.com'));
+		const leaderEmail = 'armando.rodriguez@alegra.com'
+		petAdoptedEvent.addSubscription(new subscriptions.EmailSubscription(leaderEmail));
 
 		new cdk.CfnOutput(this, 'PetsTableNameOutput', {
 			value: petsTable.tableName,
